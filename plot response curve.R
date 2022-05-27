@@ -1,5 +1,4 @@
 #------------set work directory and load packages---#
-setwd("C:/000 my work/R related")
 library(shiny)
 library(tidyverse)
 library(shinydashboard)
@@ -7,57 +6,26 @@ library(DT)
 library(readxl)
 library(lubridate)
 library(data.table)
-library(tidyr)
-library(janitor)
-library(hrbrthemes)
+#library(tidyr)
+#library(janitor)
+#library(hrbrthemes)
 library(ggplot2)
 library(patchwork)
 library(lattice)
 library(latticeExtra)
 #-----------------------read your files------------#
-#----raw support, decomp, model params-------------#
-support<-read_excel("C:/000 my work/files/weather/calc jin/post model/diagnosis.xlsx",
-                    range = "monthly support!s1:v2135")
-#head(support)
-support<-support%>%
-  mutate(weekend=ymd(weekend))%>%
-  pivot_wider(names_from = c(type, metric_key),
-              values_from = metric)
-names(support)[10:11]<-c("week","凤凰LED_刊例总价",
-                         "央广_播放次数")
-decomp<-read_excel("C:/000 my work/files/weather/calc jin/post model/diagnosis.xlsx",
-                   range = "data!a1:af210")
-
-names(decomp)[c(15,22,27,31)]<-c("户外_非总部",
-                                 "央视_免费资源",
-                                 "Seasonal_Dummy",
-                                 "实际销量_L")
-params<-read_excel("C:/000 my work/files/weather/calc jin/post model/simulation_Jin 0518.xlsx",
-                   range = "curves!u182:ae200")
-
-names(params)[1]<-"variable"
-names(params)<-make_clean_names(names(params))
-params<-params%>%
-  filter(!(is.na(variable)))%>%
-  select(variable, volume1,volume2,
-         driver1, symmetry) 
-params<-params%>%
-  mutate(variable = recode(variable,
-                           "央视"="央视_grps",
-                           "央广" ="央广_播放次数",
-                           "数字媒体曝光"="数字媒体_Impressions",
-                           "社交媒体曝光"="社交媒体_Impressions",
-                           "凤凰LED"="凤凰LED_刊例总价"))
-names(decomp)[c(12,17,18,20,23)]<-c("数字媒体_Impressions",
-                                    "凤凰LED_刊例总价",
-                                    "央广_播放次数",
-                                    "社交媒体_Impressions",
-                                   "央视_grps")
+#-----------------------raw support----------------#
+support<-read_excel("my_data.xlsx",
+                    sheet = "my_data")
+#------------My data has 14 columns------------------#
+names(support)<-c("week", paste("V",1:13,sep = "_"))
+support<-setDT(support)
+support<-support[,week:=ymd(week)]
 #------------------replace NA------------------------#
 support<-support%>%
   mutate(across(2:14, replace_na,0))
 
-#get avg weekly, max margin, max lift
+#exclude the week out of scope
 support<-setDT(support)[weekend<=ymd("2022-01-02"),]
 names(support)[1]<-"week"
 #-------------extract some basic info------------#
@@ -266,40 +234,36 @@ curve_show_threshold<-function(var,my_support,scale,hl,v,d,s){
 }
 
 #------------------test-----------------------#
-basic_stats("数字媒体_Impressions",
+  basic_stats("V_1",
             my_support = support)
-plot_raw_curve("数字媒体_Impressions",
+plot_raw_curve("V_1",
                my_support = support, hl=0.3,
                scale = 1000, v= 0.046930462000,
                d= 0.0000267,
                s= 1.760488775000)
 
-plot_preidcted_curve("数字媒体_Impressions",
+plot_preidcted_curve("V_1",
                my_support = support, hl=0.3,
                scale = 1000, v= 0.046930462000,
                d= 0.0000267,
                s= 1.760488775000)
-plot_3preidcted_curves("数字媒体_Impressions",
+plot_3preidcted_curves("V_1",
                        my_support = support, hl=0.3,
                        scale = 10000, v= 0.046930462000,
                        d= 0.000267,
                        s= 1.760488775000)
 
-threshold_points("数字媒体_Impressions",
+threshold_points("V_1",
                  my_support = support, hl=0.3,
                  scale = 1000, v= 0.046930462000,
                  d= 0.0000267,
                  s= 1.760488775000)
-curve_show_threshold("数字媒体_Impressions",
+curve_show_threshold("V_1",
                      my_support = support, hl=0.3,
                      scale = 10000, v= 0.046930462000,
                      d= 0.000267,
                      s= 1.760488775000)
-curve_show_threshold("央视_grps", my_support = support,
-                  scale=1,
-                  hl=1, v=  0.116167674,
-                  d= 0.0288926415, s= 1.8276500230)
-# a[order(a)]
+
 #----------define shiny APP----------------#
 # names(support)
 dataset<-support
@@ -404,45 +368,4 @@ server<-function(input, output){
 }
 
 shinyApp(ui, server)
-
-
-
-
-
-save.image("response_curve.rda")   
-load("response_curve.rda") 
-#------------------test tables------------------#
-# ui<-dashboardPage(
-#   dashboardHeader(title = "Practice Curves"),
-#   dashboardSidebar(
-#     sidebarMenu(
-#       menuItem("MKT Activity", tabName = "MKT_Activity")
-#     )
-#   ),
-#   dashboardBody(
-#     tabItems(tabItem("MKT_Activity", 
-#               fluidPage(title = "RAW DATA",
-#             DT::dataTableOutput("mytable")
-#               ))
-#     ))
-# )
-# server<-function(input, output){
-#   dataset<-support
-#   output$mytable<-renderDataTable(dataset)
-# }
-# 
-# shinyApp(ui, server)
-
-
-
-
-
-
- 
-#data table was not shown
-#add threshold points on chart and show above the chart
-
-
-
-
 
